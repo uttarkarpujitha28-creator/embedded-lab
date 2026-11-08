@@ -1,0 +1,22 @@
+# Kernel source
+linux/kernel-6.6/
+busybox
+
+# Compiled files
+*.o
+*.ko
+*.mod
+*.mod.c
+*.cmd
+Module.symvers
+modules.order
+
+# Generated images
+*.img
+*.bin
+*.cpio
+*.cpio.gz
+
+# Temporary files
+*.swp
+*~
