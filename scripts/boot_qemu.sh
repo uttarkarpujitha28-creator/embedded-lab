@@ -6,5 +6,5 @@ qemu-system-aarch64 \
     -m 512M \
     -kernel Image \
     -initrd ~/embedded-lab/rootfs.cpio.gz \
-    -append "console=ttyAMA0" \
+    -append "console=ttyAMA0 rdinit=/init" \
     -nographic
