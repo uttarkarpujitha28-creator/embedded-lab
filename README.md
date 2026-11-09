@@ -1,224 +1,344 @@
 # Embedded Linux & Firmware Development Lab
 
-A hands-on embedded systems learning and development environment focused on Linux kernel internals, device drivers, firmware development, and hardware-software interaction.
+![Linux](https://img.shields.io/badge/Linux-Kernel%206.6.0-black?logo=linux)
+![Architecture](https://img.shields.io/badge/Architecture-ARM64-blue)
+![Language](https://img.shields.io/badge/Language-C%2FC%2B%2B-orange)
+![Platform](https://img.shields.io/badge/Emulation-QEMU-green)
+![Status](https://img.shields.io/badge/Status-In%20Progress-yellow)
 
-This repository documents my practical learning journey, experiments, and implementations in embedded Linux and firmware development.
+## Overview
 
-## Objectives
+This repository is a hands-on embedded Linux and firmware development environment focused on learning low-level programming, Linux kernel development, and device driver implementation.
 
-- Understand Linux kernel architecture and boot process.
-- Learn Linux kernel module and device driver development.
-- Explore character, platform, I2C, and SPI drivers.
-- Understand memory-mapped I/O, interrupts, and hardware interfaces.
-- Explore embedded Linux using QEMU without requiring physical development boards.
-- Develop practical firmware and RTOS projects.
+The development environment uses an ARM64 Linux kernel running on QEMU, allowing kernel modules and driver concepts to be developed and tested without requiring physical development hardware.
+
+The repository currently includes:
+
+- ARM64 Linux kernel development using QEMU.
+- Linux loadable kernel module development.
+- Kernel module parameter handling.
+- Custom module parameter callbacks.
+- Root filesystem and initramfs creation.
+- Cross-compilation using the AArch64 GCC toolchain.
 
 ## Development Environment
 
 | Component | Configuration |
 |---|---|
 | Host OS | Ubuntu 22.04 |
-| Processor | Intel Core i5-1135G7 |
-| Virtualization | QEMU |
-| Target Architecture | ARM64 (AArch64) |
-| Emulated Machine | QEMU virt |
-| Emulated CPU | Cortex-A57 |
-| Linux Kernel | 6.6 |
+| Target Architecture | ARM64 / AArch64 |
+| Kernel Version | Linux 6.6.0 |
+| Cross Compiler | AArch64 GCC |
+| Emulator | QEMU System AArch64 |
+| CPU Model | Cortex-A57 |
+| Memory | 512 MB |
 | Root Filesystem | BusyBox-based initramfs |
-| Kernel Console | ttyAMA0 |
-| Memory Allocated to QEMU | 512 MB |
+| Programming Language | C |
 
 ## Repository Structure
 
 ```text
 embedded-lab/
 │
-├── drivers/                 # Embedded driver experiments
+├── docs/
+│
+├── drivers/
+│
+├── freertos/
 │
 ├── linux/
-│   ├── kernel-6.6/          # Linux kernel source and build
-│   ├── docs/                # Linux kernel documentation
-│   └── drivers/             # Linux kernel driver projects
+│   ├── kernel-6.6/
+│   │
+│   └── drivers/
+│       ├── hello_module/
+│       │   ├── hello_module.c
+│       │   ├── Makefile
+│       │   └── README.md
+│       │
+│       └── user_args/
+│           ├── user_args.c
+│           ├── Makefile
+│           └── README.md
 │
-├── qemu/                    # QEMU configuration and scripts
+├── projects/
 │
-├── rootfs/                  # BusyBox-based root filesystem
+├── qemu/
 │
-├── busybox/                 # BusyBox source and build environment
+├── rootfs/
+│   ├── bin/
+│   ├── dev/
+│   ├── etc/
+│   ├── init
+│   ├── lib/
+│   │   └── modules/
+│   │       └── 6.6.0/
+│   │           └── extra/
+│   │               ├── hello_module.ko
+│   │               └── user_args.ko
+│   ├── proc/
+│   ├── sbin/
+│   ├── sys/
+│   └── usr/
 │
-├── freertos/                # RTOS experiments
+├── scripts/
+│   ├── initramfs.sh
+│   └── boot_qemu.sh
 │
-├── projects/                # Independent embedded projects
-│
-├── scripts/                 # Automation scripts
-│
-├── docs/                    # General documentation
+├── rootfs.cpio.gz
 │
 └── README.md
 ```
 
-## QEMU ARM64 Linux Environment
+## ARM64 QEMU Linux Environment
 
-I configured an ARM64 Linux environment using QEMU to experiment with embedded Linux without requiring a physical ARM development board.
+The project uses QEMU to emulate an ARM64 virtual machine.
 
-### 1. Install development tools
+The Linux kernel is booted using:
 
-Install the required packages on Ubuntu:
+- ARM64 Linux kernel Image.
+- QEMU `virt` machine.
+- Cortex-A57 CPU.
+- BusyBox-based root filesystem.
+- Serial console through `ttyAMA0`.
 
-```bash
-sudo apt update
+### Booting the Linux Environment
 
-sudo apt install -y \
-    build-essential \
-    git \
-    gcc-aarch64-linux-gnu \
-    binutils-aarch64-linux-gnu \
-    qemu-system-arm \
-    libncurses-dev \
-    flex \
-    bison \
-    bc \
-    libssl-dev \
-    libelf-dev
-```
-
-### 2. Obtain Linux kernel source
-
-Download the Linux kernel source and extract it into the `linux` directory.
-
-The kernel version used in this environment is Linux 6.6.
-
-The kernel source is maintained locally and is excluded from the main Git repository to avoid pushing the entire upstream kernel source.
-
-### 3. Configure the ARM64 kernel
-
-Configure the kernel for the ARM64 architecture:
+From the project root directory:
 
 ```bash
-cd ~/embedded-lab/linux/kernel-6.6
-
-make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig
+./scripts/boot_qemu.sh
 ```
 
-The kernel must be built with the appropriate configuration for the QEMU ARM64 environment.
+The script starts QEMU and loads:
 
-### 4. Build the Linux kernel
+- ARM64 Linux kernel Image.
+- Generated initramfs archive.
+- Kernel command-line parameters.
 
-```bash
-make -j$(nproc) \
-    ARCH=arm64 \
-    CROSS_COMPILE=aarch64-linux-gnu-
-```
+The guest Linux shell becomes available after successful boot.
 
-The generated kernel image is:
+To exit QEMU:
 
 ```text
-arch/arm64/boot/Image
+Ctrl + A, then X
 ```
 
-### 5. Create the root filesystem using BusyBox
+## Root Filesystem and Initramfs
 
-BusyBox provides essential Linux user-space utilities and a shell.
+A custom BusyBox-based root filesystem is maintained inside the `rootfs/` directory.
 
-A minimal root filesystem is prepared under:
+The root filesystem contains the utilities, directories, libraries, kernel modules, and initialization script required to boot the emulated Linux environment.
 
-```text
-~/embedded-lab/rootfs/
-```
+### What is initramfs?
 
-The root filesystem contains:
+Initramfs is an initial root filesystem loaded into memory during the Linux boot process.
 
-- BusyBox executable
-- Command symlinks
-- `/init` startup script
-- Basic directory structure
-
-The root filesystem is packaged as a compressed CPIO archive:
+In this project, the contents of the `rootfs/` directory are packaged into a compressed CPIO archive:
 
 ```text
 rootfs.cpio.gz
 ```
 
-This archive is passed to QEMU as the initial RAM filesystem (initramfs).
+QEMU passes this archive to the Linux kernel using the `-initrd` option.
 
-### 6. Boot Linux using QEMU
+### Creating the Initramfs
 
-Run the following command:
-
-```bash
-cd ~/embedded-lab/linux/kernel-6.6/arch/arm64/boot
-
-qemu-system-aarch64 \
-    -machine virt \
-    -cpu cortex-a57 \
-    -m 512M \
-    -kernel Image \
-    -initrd ~/embedded-lab/rootfs.cpio.gz \
-    -append "console=ttyAMA0" \
-    -nographic
-```
-
-### 7. Verify Linux boot
-
-After successful boot, the Linux kernel starts and mounts the initramfs.
-
-The BusyBox shell provides a minimal user-space environment.
-
-Useful commands inside QEMU:
-
-```bash
-uname -a
-uname -m
-cat /proc/cpuinfo
-cat /proc/meminfo
-ls /
-```
-
-Expected architecture:
+The project includes a shell script:
 
 ```text
-aarch64
+scripts/initramfs.sh
 ```
 
-To exit QEMU, use:
+This script:
+
+1. Identifies the project root directory.
+2. Navigates to the `rootfs/` directory.
+3. Collects all files and directories.
+4. Creates a CPIO archive using the `newc` format.
+5. Compresses the archive using gzip.
+6. Generates `rootfs.cpio.gz` in the project root directory.
+
+Run the script:
+
+```bash
+./scripts/initramfs.sh
+```
+
+The generated archive is:
 
 ```text
-Ctrl + A
-X
+embedded-lab/rootfs.cpio.gz
 ```
+
+The script uses the project directory as its reference, so it can be executed from different working directories.
+
+### Verifying the Initramfs
+
+To inspect the contents of the generated archive:
+
+```bash
+zcat rootfs.cpio.gz | cpio -it
+```
+
+To check whether a particular kernel module is included:
+
+```bash
+zcat rootfs.cpio.gz | cpio -it | grep user_args
+```
+
+Expected output:
+
+```text
+./lib/modules/6.6.0/extra/user_args.ko
+```
+
+### When Should Initramfs Be Rebuilt?
+
+Rebuild the initramfs whenever you:
+
+- Add a new kernel module to the root filesystem.
+- Replace an existing `.ko` file.
+- Modify the root filesystem contents.
+- Change the initialization script or other files included in the archive.
+
+For example, after copying a newly compiled module:
+
+```bash
+cp linux/drivers/user_args/user_args.ko \
+rootfs/lib/modules/6.6.0/extra/
+```
+
+Rebuild the archive:
+
+```bash
+./scripts/initramfs.sh
+```
+
+Then boot QEMU:
+
+```bash
+./scripts/boot_qemu.sh
+```
+
+This ensures QEMU loads the latest root filesystem and kernel modules.
+
+## Linux Kernel Module Development
+
+This project includes practical exercises for developing Linux loadable kernel modules.
+
+### 1. Hello World Kernel Module
+
+Demonstrates the basic structure and lifecycle of a Linux kernel module.
+
+Concepts covered:
+
+- Kernel module initialization using `module_init()`.
+- Kernel module cleanup using `module_exit()`.
+- Kernel logging using `pr_info()`.
+- Building and loading `.ko` modules.
+- Module insertion and removal using `insmod` and `rmmod`.
+
+[View Hello Module Documentation](linux/drivers/hello_module/README.md)
+
+### 2. User Arguments Kernel Module
+
+Demonstrates passing parameters to a kernel module and modifying them at runtime.
+
+Concepts covered:
+
+- `module_param()`
+- `module_param_array()`
+- `module_param_cb()`
+- Custom parameter setter callbacks.
+- Runtime parameter updates through sysfs.
+- Reading module parameters from user space.
+
+[View User Arguments Documentation](linux/drivers/user_args/README.md)
+
+## Complete Development Workflow
+
+The following workflow is used when developing and testing a kernel module.
+
+```text
+       Kernel Module Source (.c)
+                  |
+                  v
+          Cross Compilation
+                  |
+                  v
+             Module (.ko)
+                  |
+                  v
+       Copy Module into rootfs/
+                  |
+                  v
+          Run initramfs.sh
+                  |
+                  v
+       Generate rootfs.cpio.gz
+                  |
+                  v
+          Run boot_qemu.sh
+                  |
+                  v
+          ARM64 Linux Boot
+                  |
+                  v
+          Load Module using
+               insmod
+                  |
+                  v
+         Test Module using
+          lsmod / dmesg
+                  |
+                  v
+          Unload using rmmod
+```
+
+### Quick Reference Commands
+
+| Operation | Command |
+|---|---|
+| Build initramfs | `./scripts/initramfs.sh` |
+| Boot QEMU | `./scripts/boot_qemu.sh` |
+| List modules | `lsmod` |
+| Load module | `insmod module_name.ko` |
+| Check kernel logs | `dmesg` |
+| Unload module | `rmmod module_name` |
+| Inspect sysfs parameters | `ls /sys/module/module_name/parameters/` |
 
 ## Current Progress
 
-| Area | Status |
+| Area | Progress |
 |---|---|
-| Ubuntu development environment | Completed |
-| QEMU ARM64 configuration | Completed |
-| Linux 6.6 kernel build | Completed |
+| ARM64 QEMU environment | Completed |
+| Linux 6.6.0 kernel boot | Completed |
 | BusyBox root filesystem | Completed |
-| ARM64 Linux boot using QEMU | Completed |
-| Kernel module development | In progress |
-| Character device driver | Planned |
-| Platform device driver | Planned |
-| I2C driver | Planned |
-| SPI driver | Planned |
-| Interrupt handling | Planned |
-| FreeRTOS experiments | Planned |
+| Initramfs generation script | Completed |
+| Hello World kernel module | Completed |
+| Module parameter handling | Completed |
+| Custom parameter callbacks | Completed |
+| Runtime sysfs parameter updates | Completed |
+| Linux character device driver | Planned |
 
 ## Future Development
 
-The next stages of this project will focus on:
+Planned topics and projects:
 
-1. Linux kernel module development.
-2. Character device driver implementation.
-3. Linux device model and platform drivers.
-4. Device tree concepts and bindings.
-5. I2C and SPI driver development.
-6. Interrupt handling and synchronization.
-7. Memory-mapped register access.
-8. RTOS and bare-metal firmware experiments.
+- Linux character device drivers.
+- `file_operations` and user-space/kernel-space communication.
+- GPIO and interrupt handling.
+- I2C and SPI device drivers.
+- Platform drivers and Device Tree.
+- Linux kernel synchronization mechanisms.
+- DMA and memory management.
+- Embedded Linux BSP development.
 
-## Learning Approach
+## Author
 
-The focus of this repository is practical implementation, debugging, documentation, and understanding how software interacts with hardware.
+**Pujitha Uttharkar**
 
-All experiments and implementations will be documented as the project progresses.
+Embedded Software | Linux Kernel | Firmware Development
+
+---
+*This repository is actively maintained as a practical embedded Linux and firmware development learning project.*
